@@ -18,6 +18,9 @@ import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.common.GlobalHistogramBinarizer;
+
+
 import com.google.zxing.qrcode.QRCodeReader;
 import com.google.zxing.qrcode.encoder.QRCode;
 
@@ -25,14 +28,21 @@ import com.google.zxing.qrcode.encoder.QRCode;
 public class TestZxing {
     public static void main( String[] args ) {
         System.out.println("test beginning...");
-        System.out.println("Enter your dir: ");
+        String testDir = "/home/svtter/Documents/Dataset/red/processed/";
+//        String testDir = "/home/svtter/Documents/Dataset/blue/processed/";
 
-//    Scanner sc = new Scanner(System.in);
-//    String testDir = sc.nextLine();
+        System.out.println("Enter your dir: [default: " + testDir + "]");
+
+        Scanner sc = new Scanner(System.in);
+        String nextDir = sc.nextLine();
+        if (nextDir.equals("")) {
+            nextDir = testDir;
+        }
+        System.out.println("Test dir: " + nextDir);
+
         ZxingReader test = new ZxingReader();
-        String testDir = "/Users/xiuhao/Pictures/qrcode";
         try {
-            test.testFolder(testDir);
+            test.testFolder(nextDir);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -57,6 +67,10 @@ class ZxingReader {
 
     public void testFolder(String path) {
         File file = new File(path);
+        int wholeFiles = 0;
+        int acc = 0;
+
+
         if (file.exists()) {
             LinkedList<File> list = new LinkedList<File>();
             File[] files = file.listFiles();
@@ -66,23 +80,53 @@ class ZxingReader {
                 } else {
                     String filePath = file2.getAbsolutePath();
                     System.out.println("文件:" + filePath);
-                    this.test(filePath);
+                    if (this.test(filePath)) {
+                        acc ++;
+                        System.out.println("acc num: " + acc);
+                    }
+                    wholeFiles++;
                 }
             }
         }
+
+        System.out.println("ACC: " + acc);
+        System.out.println("WholeFiles: " + wholeFiles);
+        System.out.println("Acc rate: " + (double)acc / wholeFiles);
+    }
+
+
+    // mutiple test
+    public boolean test(String path) {
+        try {
+
+            File imageFile = new File(path);
+            BufferedImage image = null;
+            image = ImageIO.read(imageFile);
+            LuminanceSource source = new BufferedImageLuminanceSource(image);
+            Binarizer Hbinarizer = new HybridBinarizer(source);
+            Binarizer Gbinarizer = new GlobalHistogramBinarizer(source);
+
+
+            boolean res1, res2;
+            System.out.println("H:");
+            res1 = testor(Hbinarizer);
+            System.out.println("G:");
+            res2 = testor(Gbinarizer);
+            System.out.println("Result: " + res1 + " " + res2);
+            return res1 || res2;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+
     }
 
 
 
-    public void test(String path){
+    public boolean testor(Binarizer binarizer){
         //二维码图片路径
-//    String path = "/Users/xiuhao/Pictures/qrcode_gray/2018-3-21-15-46-41.bmp";
-        File imageFile = new File(path);
-        BufferedImage image = null;
         try {
-            image = ImageIO.read(imageFile);
-            LuminanceSource source = new BufferedImageLuminanceSource(image);
-            Binarizer binarizer = new HybridBinarizer(source);
             BinaryBitmap binaryBitmap = new BinaryBitmap(binarizer);
 
             List<BarcodeFormat> allFormats = new ArrayList<>();
@@ -94,18 +138,23 @@ class ZxingReader {
             hints.put(DecodeHintType.POSSIBLE_FORMATS, allFormats);
 
             //解码获取二维码中信息
-
             QRCodeReader qrcoder = new QRCodeReader();
             Result result = qrcoder.decode(binaryBitmap, hints);
-//      Result result = qrcoder.decode(binaryBitmap);
+    //      Result result = qrcoder.decode(binaryBitmap);
             System.out.println(result.getText());
-        } catch (IOException e) {
-            e.printStackTrace();
+            return true;
         } catch (NotFoundException e) {
             System.out.println("There is no QR code in the image");
         } catch (Exception e) {
             System.out.println("Other exception.");
             e.printStackTrace();
         }
+
+        return false;
     }
+}
+
+
+class ResultRecorder {
+
 }
